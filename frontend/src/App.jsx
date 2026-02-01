@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Plus, MessageSquare, Trash2, Menu, X, Sparkles, Brain, FileText, Upload } from 'lucide-react'
+import { Send, Plus, MessageSquare, Trash2, Menu, X, Sparkles, Brain, FileText, Upload, Mic } from 'lucide-react'
+import VoiceAgent from './VoiceAgent'
 import './index.css'
 
 function App() {
@@ -10,6 +11,7 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [memoryCount, setMemoryCount] = useState(0)
   const [pdfInfo, setPdfInfo] = useState(null)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const wsRef = useRef(null)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -308,13 +310,22 @@ function App() {
                 className="w-full bg-transparent px-4 py-4 pr-12 text-sm resize-none outline-none max-h-48 placeholder-gray-500"
                 style={{ minHeight: '56px' }}
               />
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim() || isLoading}
-                className="absolute right-3 bottom-3 p-2 bg-white text-black rounded-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
-              >
-                <Send size={16} />
-              </button>
+              <div className="absolute right-3 bottom-3 flex gap-2">
+                <button
+                  onClick={() => setVoiceOpen(true)}
+                  className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  title="Voice Assistant"
+                >
+                  <Mic size={16} />
+                </button>
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || isLoading}
+                  className="p-2 bg-white text-black rounded-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
             </div>
             <p className="text-center text-xs text-gray-500 mt-3">
               {pdfInfo ? '📄 PDF loaded • Ask questions about your document' : 'Upload a PDF or search the web'}
@@ -322,6 +333,9 @@ function App() {
           </div>
         </div>
       </main>
+      
+      {/* Voice Agent Modal */}
+      <VoiceAgent isOpen={voiceOpen} onClose={() => setVoiceOpen(false)} />
     </div>
   )
 }
