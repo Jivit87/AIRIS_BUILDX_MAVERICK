@@ -4,3 +4,4 @@ python-dotenv==1.0.1
 langchain>=0.3.14
 langchain-ollama>=0.2.2
 websockets==12.0
+google-search-results>=2.4.0
