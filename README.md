@@ -2,8 +2,6 @@
 
 **Nova AI** is a next-generation hybrid personal assistant that seamlessly blends cloud-based voice intelligence with local privacy-focused LLMs. It features a dual-architecture design: ultra-low latency voice interaction powered by **VAPI** and a private, locally hosted chat intelligence system using **Ollama** and **LangChain**.
 
-![Nova AI Dashboard](https://via.placeholder.com/1200x675/0a0a0f/4f46e5?text=Nova+AI+Interface)
-
 ## ✨ Key Features
 
 ### 🎙️ VAPI-Powered Voice Interface
