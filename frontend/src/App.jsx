@@ -213,7 +213,7 @@ function App() {
             </button>
             <div className="ml-4 flex items-center gap-2">
               <Sparkles size={18} className="text-green-500" />
-              <span className="text-sm font-medium">AI Assistant</span>
+              <span className="text-sm font-medium">Nova</span>
             </div>
           </div>
           
@@ -304,7 +304,7 @@ function App() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={pdfInfo ? "Ask about your PDF..." : "Message AI Assistant..."}
+                placeholder={pdfInfo ? "Ask about your PDF..." : "Message Nova..."}
                 rows={1}
                 disabled={isLoading}
                 className="w-full bg-transparent px-4 py-4 pr-12 text-sm resize-none outline-none max-h-48 placeholder-gray-500"

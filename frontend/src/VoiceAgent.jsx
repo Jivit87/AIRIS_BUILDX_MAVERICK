@@ -199,7 +199,7 @@ export default function VoiceAgent({ isOpen, onClose }) {
           {/* Assistant response */}
           {assistantMessage && (
             <div className="text-center p-4 rounded-2xl bg-white/5 border border-white/10 max-h-40 overflow-y-auto">
-              <p className="text-xs text-emerald-400 mb-1">Assistant</p>
+              <p className="text-xs text-emerald-400 mb-1">Nova</p>
               <p className="text-base text-white/80">{assistantMessage}</p>
             </div>
           )}

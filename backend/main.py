@@ -11,7 +11,7 @@ from agent import ChatAgent
 
 load_dotenv()
 
-app = FastAPI(title="AI Personal Assistant")
+app = FastAPI(title="Nova AI")
 
 app.add_middleware(
     CORSMiddleware,
@@ -27,7 +27,7 @@ sessions: dict[str, ChatAgent] = {}
 
 @app.get("/")
 async def root():
-    return {"message": "AI Personal Assistant API is running!"}
+    return {"message": "Nova AI API is running!"}
 
 
 @app.get("/health")
