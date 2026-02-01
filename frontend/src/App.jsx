@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Plus, MessageSquare, Trash2, Menu, X, Sparkles, Brain } from 'lucide-react'
+import { Send, Plus, MessageSquare, Trash2, Menu, X, Sparkles, Brain, FileText, Upload } from 'lucide-react'
 import './index.css'
 
 function App() {
@@ -9,8 +9,10 @@ function App() {
   const [sessionId] = useState(() => crypto.randomUUID())
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [memoryCount, setMemoryCount] = useState(0)
+  const [pdfInfo, setPdfInfo] = useState(null)
   const wsRef = useRef(null)
   const messagesEndRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -34,12 +36,20 @@ function App() {
         })
       } else if (data.type === 'complete') {
         setIsLoading(false)
-        if (data.message_count !== undefined) {
-          setMemoryCount(data.message_count)
-        }
+        if (data.message_count !== undefined) setMemoryCount(data.message_count)
+        if (data.pdf_info) setPdfInfo(data.pdf_info !== 'No PDF loaded' ? data.pdf_info : null)
       } else if (data.type === 'cleared') {
         setMessages([])
         setMemoryCount(0)
+      } else if (data.type === 'pdf_loaded') {
+        setPdfInfo(data.pdf_info)
+        setMessages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          role: 'system',
+          content: `📄 ${data.message}`
+        }])
+      } else if (data.type === 'pdf_cleared') {
+        setPdfInfo(null)
       } else if (data.type === 'error') {
         setIsLoading(false)
         setMessages(prev => {
@@ -77,6 +87,34 @@ function App() {
     }
   }
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !file.name.endsWith('.pdf')) {
+      alert('Please select a PDF file')
+      return
+    }
+    
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1]
+      if (wsRef.current) {
+        wsRef.current.send(JSON.stringify({
+          type: 'upload_pdf',
+          data: base64,
+          filename: file.name
+        }))
+      }
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const clearPdf = () => {
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'clear_pdf' }))
+    }
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -98,6 +136,39 @@ function App() {
           </button>
         </div>
 
+        {/* PDF Upload */}
+        <div className="px-3 py-2">
+          <input
+            type="file"
+            accept=".pdf"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors text-sm"
+          >
+            <Upload size={16} />
+            <span>Upload PDF</span>
+          </button>
+        </div>
+
+        {/* PDF Info */}
+        {pdfInfo && (
+          <div className="px-3 py-2">
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-green-900/30 border border-green-600/30">
+              <div className="flex items-center gap-2">
+                <FileText size={16} className="text-green-400" />
+                <span className="text-xs text-green-300 truncate max-w-[120px]">{pdfInfo}</span>
+              </div>
+              <button onClick={clearPdf} className="text-red-400 hover:text-red-300">
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Memory Indicator */}
         <div className="px-3 py-2">
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2a2a2a]">
@@ -108,12 +179,12 @@ function App() {
 
         <div className="flex-1 overflow-y-auto px-3">
           <p className="text-xs text-gray-500 px-2 py-2">Current Session</p>
-          {messages.length > 0 && (
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#2a2a2a] text-sm truncate">
+          {messages.filter(m => m.role === 'user').slice(0, 1).map((msg) => (
+            <div key={msg.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#2a2a2a] text-sm truncate">
               <MessageSquare size={16} className="text-gray-400 flex-shrink-0" />
-              <span className="truncate">{messages[0]?.content.slice(0, 28)}...</span>
+              <span className="truncate">{msg.content.slice(0, 28)}...</span>
             </div>
-          )}
+          ))}
         </div>
 
         <div className="p-3 border-t border-white/10 flex-shrink-0">
@@ -144,13 +215,20 @@ function App() {
             </div>
           </div>
           
-          {/* Memory Badge */}
-          {memoryCount > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs">
-              <Brain size={14} />
-              <span>{memoryCount} in memory</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {pdfInfo && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-xs">
+                <FileText size={14} />
+                <span>PDF loaded</span>
+              </div>
+            )}
+            {memoryCount > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs">
+                <Brain size={14} />
+                <span>{memoryCount} in memory</span>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Messages */}
@@ -161,19 +239,19 @@ function App() {
                 <Sparkles size={32} className="text-white" />
               </div>
               <h1 className="text-2xl font-semibold mb-2">How can I help you today?</h1>
-              <p className="text-gray-400 mb-2">I remember our conversation as we chat</p>
-              <p className="text-gray-500 text-sm mb-8">Ask me anything - I'll remember context from earlier messages</p>
+              <p className="text-gray-400 mb-2">Upload a PDF or ask me anything</p>
+              <p className="text-gray-500 text-sm mb-8">I can search the web and answer questions about your documents</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl w-full">
                 {[
-                  'Explain quantum computing simply',
-                  'Write a creative short story',
-                  'Help me with a coding problem',
-                  'Brainstorm startup ideas'
+                  '📄 Upload a PDF and ask questions',
+                  '🔍 Search the latest news',
+                  '💡 Explain a complex topic',
+                  '✍️ Help me write something'
                 ].map((suggestion) => (
                   <button
                     key={suggestion}
-                    onClick={() => setInput(suggestion)}
+                    onClick={() => suggestion.includes('Upload') ? fileInputRef.current?.click() : setInput(suggestion.slice(2))}
                     className="p-4 text-left rounded-xl border border-white/10 hover:bg-white/5 transition-colors text-sm"
                   >
                     {suggestion}
@@ -188,14 +266,18 @@ function App() {
                   <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-medium ${
                     msg.role === 'user' 
                       ? 'bg-blue-600' 
+                      : msg.role === 'system'
+                      ? 'bg-green-600'
                       : 'bg-gradient-to-br from-green-400 to-blue-500'
                   }`}>
-                    {msg.role === 'user' ? 'U' : '✦'}
+                    {msg.role === 'user' ? 'U' : msg.role === 'system' ? '📄' : '✦'}
                   </div>
                   <div className={`flex-1 ${msg.role === 'user' ? 'text-right' : ''}`}>
                     <div className={`inline-block px-4 py-3 rounded-2xl max-w-[85%] text-left ${
                       msg.role === 'user' 
                         ? 'bg-blue-600 rounded-br-md' 
+                        : msg.role === 'system'
+                        ? 'bg-green-900/30 border border-green-600/30 rounded-bl-md'
                         : 'bg-[#2a2a2a] rounded-bl-md'
                     }`}>
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -220,7 +302,7 @@ function App() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message AI Assistant..."
+                placeholder={pdfInfo ? "Ask about your PDF..." : "Message AI Assistant..."}
                 rows={1}
                 disabled={isLoading}
                 className="w-full bg-transparent px-4 py-4 pr-12 text-sm resize-none outline-none max-h-48 placeholder-gray-500"
@@ -235,7 +317,7 @@ function App() {
               </button>
             </div>
             <p className="text-center text-xs text-gray-500 mt-3">
-              AI remembers this conversation • Clear memory to start fresh
+              {pdfInfo ? '📄 PDF loaded • Ask questions about your document' : 'Upload a PDF or search the web'}
             </p>
           </div>
         </div>
