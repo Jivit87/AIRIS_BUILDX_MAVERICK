@@ -1,0 +1,6 @@
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-dotenv==1.0.1
+langchain>=0.3.14
+langchain-ollama>=0.2.2
+websockets==12.0
