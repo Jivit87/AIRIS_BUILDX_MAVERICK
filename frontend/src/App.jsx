@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Plus, MessageSquare, Settings, Menu, X, Sparkles } from 'lucide-react'
+import { Send, Plus, MessageSquare, Trash2, Menu, X, Sparkles, Brain } from 'lucide-react'
 import './index.css'
 
 function App() {
@@ -8,16 +8,14 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId] = useState(() => crypto.randomUUID())
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [memoryCount, setMemoryCount] = useState(0)
   const wsRef = useRef(null)
   const messagesEndRef = useRef(null)
-  const inputRef = useRef(null)
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // WebSocket connection
   useEffect(() => {
     const ws = new WebSocket(`ws://localhost:8000/ws/${sessionId}`)
     
@@ -36,6 +34,12 @@ function App() {
         })
       } else if (data.type === 'complete') {
         setIsLoading(false)
+        if (data.message_count !== undefined) {
+          setMemoryCount(data.message_count)
+        }
+      } else if (data.type === 'cleared') {
+        setMessages([])
+        setMemoryCount(0)
       } else if (data.type === 'error') {
         setIsLoading(false)
         setMessages(prev => {
@@ -63,8 +67,14 @@ function App() {
     
     setMessages(prev => [...prev, userMsg, assistantMsg])
     setIsLoading(true)
-    wsRef.current.send(JSON.stringify({ content: input.trim() }))
+    wsRef.current.send(JSON.stringify({ type: 'chat', content: input.trim() }))
     setInput('')
+  }
+
+  const clearMemory = () => {
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ type: 'clear' }))
+    }
   }
 
   const handleKeyDown = (e) => {
@@ -74,17 +84,13 @@ function App() {
     }
   }
 
-  const newChat = () => {
-    setMessages([])
-  }
-
   return (
     <div className="flex h-screen bg-[#212121] text-white">
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} bg-[#171717] flex flex-col transition-all duration-300 overflow-hidden`}>
         <div className="p-3 flex-shrink-0">
           <button
-            onClick={newChat}
+            onClick={clearMemory}
             className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-white/20 hover:bg-white/10 transition-colors"
           >
             <Plus size={18} />
@@ -92,8 +98,16 @@ function App() {
           </button>
         </div>
 
+        {/* Memory Indicator */}
+        <div className="px-3 py-2">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#2a2a2a]">
+            <Brain size={16} className="text-purple-400" />
+            <span className="text-xs text-gray-400">Memory: {memoryCount} messages</span>
+          </div>
+        </div>
+
         <div className="flex-1 overflow-y-auto px-3">
-          <p className="text-xs text-gray-500 px-2 py-2">Today</p>
+          <p className="text-xs text-gray-500 px-2 py-2">Current Session</p>
           {messages.length > 0 && (
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#2a2a2a] text-sm truncate">
               <MessageSquare size={16} className="text-gray-400 flex-shrink-0" />
@@ -103,27 +117,40 @@ function App() {
         </div>
 
         <div className="p-3 border-t border-white/10 flex-shrink-0">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 cursor-pointer">
-            <Settings size={18} className="text-gray-400" />
-            <span className="text-sm">Settings</span>
-          </div>
+          <button
+            onClick={clearMemory}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
+          >
+            <Trash2 size={18} />
+            <span className="text-sm">Clear memory</span>
+          </button>
         </div>
       </aside>
 
       {/* Main */}
       <main className="flex-1 flex flex-col relative">
         {/* Header */}
-        <header className="h-12 flex items-center px-4 border-b border-white/10">
-          <button 
-            onClick={() => setSidebarOpen(!sidebarOpen)} 
-            className="p-2 hover:bg-white/10 rounded-lg"
-          >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <div className="ml-4 flex items-center gap-2">
-            <Sparkles size={18} className="text-green-500" />
-            <span className="text-sm font-medium">AI Assistant</span>
+        <header className="h-12 flex items-center justify-between px-4 border-b border-white/10">
+          <div className="flex items-center">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="p-2 hover:bg-white/10 rounded-lg"
+            >
+              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="ml-4 flex items-center gap-2">
+              <Sparkles size={18} className="text-green-500" />
+              <span className="text-sm font-medium">AI Assistant</span>
+            </div>
           </div>
+          
+          {/* Memory Badge */}
+          {memoryCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs">
+              <Brain size={14} />
+              <span>{memoryCount} in memory</span>
+            </div>
+          )}
         </header>
 
         {/* Messages */}
@@ -134,7 +161,8 @@ function App() {
                 <Sparkles size={32} className="text-white" />
               </div>
               <h1 className="text-2xl font-semibold mb-2">How can I help you today?</h1>
-              <p className="text-gray-400 mb-8">Ask me anything or choose a suggestion</p>
+              <p className="text-gray-400 mb-2">I remember our conversation as we chat</p>
+              <p className="text-gray-500 text-sm mb-8">Ask me anything - I'll remember context from earlier messages</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl w-full">
                 {[
@@ -189,7 +217,6 @@ function App() {
           <div className="max-w-3xl mx-auto">
             <div className="relative bg-[#2f2f2f] rounded-2xl border border-white/10 focus-within:border-white/20">
               <textarea
-                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -208,7 +235,7 @@ function App() {
               </button>
             </div>
             <p className="text-center text-xs text-gray-500 mt-3">
-              AI can make mistakes. Please verify important information.
+              AI remembers this conversation • Clear memory to start fresh
             </p>
           </div>
         </div>

@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Active chat sessions
+# Active chat sessions with memory
 sessions: dict[str, ChatAgent] = {}
 
 
@@ -47,14 +47,38 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
-            user_input = message.get("content", "")
             
-            full_response = ""
-            async for chunk in agent.chat(user_input):
-                full_response += chunk
-                await websocket.send_json({"type": "stream", "content": chunk})
+            # Handle different message types
+            msg_type = message.get("type", "chat")
             
-            await websocket.send_json({"type": "complete", "content": full_response})
+            if msg_type == "clear":
+                # Clear memory for this session
+                agent.clear_history()
+                await websocket.send_json({
+                    "type": "cleared",
+                    "message_count": 0
+                })
+            elif msg_type == "get_history":
+                # Return conversation history
+                await websocket.send_json({
+                    "type": "history",
+                    "messages": agent.get_history(),
+                    "message_count": agent.get_message_count()
+                })
+            else:
+                # Regular chat message
+                user_input = message.get("content", "")
+                full_response = ""
+                
+                async for chunk in agent.chat(user_input):
+                    full_response += chunk
+                    await websocket.send_json({"type": "stream", "content": chunk})
+                
+                await websocket.send_json({
+                    "type": "complete",
+                    "content": full_response,
+                    "message_count": agent.get_message_count()
+                })
             
     except WebSocketDisconnect:
         print(f"Session {session_id} disconnected")
@@ -69,6 +93,27 @@ async def new_session():
     session_id = str(uuid.uuid4())
     sessions[session_id] = ChatAgent()
     return {"session_id": session_id}
+
+
+@app.post("/api/session/{session_id}/clear")
+async def clear_session(session_id: str):
+    """Clear memory for a session."""
+    if session_id in sessions:
+        sessions[session_id].clear_history()
+        return {"status": "cleared", "message_count": 0}
+    return {"status": "session_not_found"}
+
+
+@app.get("/api/session/{session_id}/history")
+async def get_history(session_id: str):
+    """Get conversation history for a session."""
+    if session_id in sessions:
+        agent = sessions[session_id]
+        return {
+            "messages": agent.get_history(),
+            "message_count": agent.get_message_count()
+        }
+    return {"messages": [], "message_count": 0}
 
 
 @app.delete("/api/session/{session_id}")
