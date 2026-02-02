@@ -33,38 +33,38 @@ Nova AI uses a **Hybrid Architecture** to optimize for both speed and privacy:
 graph TD
     User[User]
     
-    subgraph Frontend [React + Vite]
-        UI[Nova UI]
-        VoiceSDK[VAPI Web SDK]
+    subgraph Frontend
+        UI["Nova UI (React + Vite)"]
+        VoiceSDK["VAPI Web SDK"]
     end
     
-    subgraph VoiceCloud [VAPI Cloud]
-        VapiCore[Voice Processing]
+    subgraph VoiceCloud
+        VapiCore["VAPI Voice Processing"]
     end
     
-    subgraph Backend [FastAPI Server]
-        API[WebSocket API]
-        LangChain[LangChain Agent]
-        RAG[RAG Engine]
+    subgraph Backend
+        API["FastAPI WebSocket API"]
+        LangChain["LangChain Agent"]
+        RAG["RAG Engine"]
     end
     
-    subgraph Local [Local Infrastructure]
-        Ollama[Ollama (Gemma/Llama)]
+    subgraph Local
+        Ollama["Ollama - Gemma / Llama Models"]
     end
     
     subgraph External
-        SerpAPI[Google Search API]
+        SerpAPI["Google Search API (SerpAPI)"]
     end
 
-    User -- "Voice (Microphone)" --> VoiceSDK
-    VoiceSDK -- "WebRTC/Audio" --> VapiCore
+    User --> VoiceSDK
+    VoiceSDK --> VapiCore
     
-    User -- "Text/Files" --> UI
-    UI -- "WebSocket JSON" --> API
+    User --> UI
+    UI --> API
     API --> LangChain
     LangChain --> Ollama
-    LangChain -- "If Search Needed" --> SerpAPI
-    LangChain -- "If PDF Loaded" --> RAG
+    LangChain --> SerpAPI
+    LangChain --> RAG
 ```
 
 ---
